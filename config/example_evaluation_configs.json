@@ -1,0 +1,16 @@
+{
+  "configurations": {
+    "baseline": {},
+    "fast_no_lr": {
+      "left_right_max_diff_px": null,
+      "block_size": 5,
+      "speckle_window_size": 50
+    },
+    "robust": {
+      "block_size": 7,
+      "uniqueness_ratio": 15,
+      "speckle_window_size": 150,
+      "left_right_max_diff_px": 1.0
+    }
+  }
+}

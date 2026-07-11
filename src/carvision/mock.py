@@ -15,6 +15,16 @@ class MockStereoScene:
     calibration: StereoCalibration
 
 
+@dataclass(frozen=True)
+class NoisyMultisensorScene:
+    """Noisy measurements of shared front and side obstacles."""
+
+    disparity_px: NDArray[np.float64]
+    calibration: StereoCalibration
+    tof_ranges_m: NDArray[np.float64]
+    tof_azimuth_rad: NDArray[np.float64]
+
+
 def make_mock_stereo_scene(height: int = 48, width: int = 64) -> MockStereoScene:
     """Create a front wall with a nearer rectangular obstacle and missing pixels."""
     if height < 8 or width < 8:
@@ -41,3 +51,33 @@ def make_mock_tof_scan(ray_count: int = 181) -> tuple[NDArray[np.float64], NDArr
     ranges[::37] = np.nan
     return ranges, azimuth
 
+
+def make_noisy_multisensor_scene(
+    height: int = 240, width: int = 320, *, seed: int = 7
+) -> NoisyMultisensorScene:
+    """Create overlapping stereo/ToF data with noise, holes, and gross outliers."""
+    if height < 48 or width < 64:
+        raise ValueError("noisy scene dimensions must be at least 48x64")
+    rng = np.random.default_rng(seed)
+    scale = width / 320.0
+    calibration = StereoCalibration(280.0 * scale, 280.0 * scale,
+                                    (width - 1) / 2, (height - 1) / 2, 0.12)
+    depth = np.full((height, width), 7.0)
+    depth[height // 3: 5 * height // 6, 2 * width // 5: 3 * width // 5] = 3.0
+    depth[height // 2: 4 * height // 5, 3 * width // 4: 9 * width // 10] = 4.5
+    disparity = calibration.fx_px * calibration.baseline_m / depth
+    disparity += rng.normal(0.0, 0.12, depth.shape)
+    disparity[rng.random(depth.shape) < 0.06] = np.nan
+    disparity[rng.random(depth.shape) < 0.015] = 0.0
+    disparity[rng.random(depth.shape) < 0.003] = rng.choice([-2.0, 0.02, 80.0])
+
+    azimuth = np.linspace(-np.deg2rad(55), np.deg2rad(55), 361)
+    ranges = 7.0 / np.cos(azimuth)
+    center = np.abs(azimuth) < np.deg2rad(11)
+    right = (azimuth > np.deg2rad(22)) & (azimuth < np.deg2rad(34))
+    ranges[center] = 3.0 / np.cos(azimuth[center])
+    ranges[right] = 4.5 / np.cos(azimuth[right])
+    ranges += rng.normal(0.0, 0.025, ranges.shape)
+    ranges[rng.random(ranges.shape) < 0.05] = np.nan
+    ranges[rng.choice(len(ranges), 5, replace=False)] = np.array([0.0, -1.0, np.inf, 0.08, 30.0])
+    return NoisyMultisensorScene(disparity, calibration, ranges, azimuth)

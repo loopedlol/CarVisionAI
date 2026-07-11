@@ -29,3 +29,20 @@ def test_backprojection_rejects_non_image() -> None:
     with pytest.raises(ValueError):
         backproject_depth(np.ones(3), CAL)
 
+
+def test_depth_limits_reject_extreme_disparities() -> None:
+    depth = disparity_to_depth(np.array([1e9, 10.0, 1e-12]), CAL,
+                               min_depth_m=0.1, max_depth_m=20.0)
+    assert np.isnan(depth[0]) and depth[1] == pytest.approx(2.0) and np.isnan(depth[2])
+
+
+def test_randomized_projection_has_independent_closed_form_expected_values() -> None:
+    rng = np.random.default_rng(3)
+    depth = rng.uniform(0.5, 15.0, size=(9, 13))
+    points = backproject_depth(depth, CAL)
+    for _ in range(40):
+        v = int(rng.integers(0, depth.shape[0]))
+        u = int(rng.integers(0, depth.shape[1]))
+        expected = [(u - 1.0) * depth[v, u] / 100.0,
+                    (v - 1.0) * depth[v, u] / 100.0, depth[v, u]]
+        np.testing.assert_allclose(points[v, u], expected, atol=1e-12)

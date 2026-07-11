@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "units": {"translation": "metres", "pixels": "pixels"},
+  "image_size": [320, 160],
+  "left": {
+    "camera_matrix": [[240.0, 0.0, 159.5], [0.0, 240.0, 79.5], [0.0, 0.0, 1.0]],
+    "distortion": [0.0, 0.0, 0.0, 0.0, 0.0]
+  },
+  "right": {
+    "camera_matrix": [[240.0, 0.0, 159.5], [0.0, 240.0, 79.5], [0.0, 0.0, 1.0]],
+    "distortion": [0.0, 0.0, 0.0, 0.0, 0.0]
+  },
+  "right_from_left": {
+    "rotation": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+    "translation_m": [-0.12, 0.0, 0.0]
+  },
+  "left_camera_to_vehicle": {
+    "rotation": [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]],
+    "translation_m": [0.0, 0.0, 0.8]
+  },
+  "calibration_rms_px": null
+}

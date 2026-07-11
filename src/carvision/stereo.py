@@ -25,16 +25,20 @@ class StereoCalibration:
 
 
 def disparity_to_depth(
-    disparity_px: NDArray[np.floating], calibration: StereoCalibration
+    disparity_px: NDArray[np.floating], calibration: StereoCalibration, *,
+    min_depth_m: float = 0.0, max_depth_m: float = np.inf,
 ) -> NDArray[np.float64]:
     """Convert rectified disparity to optical-axis depth in metres.
 
     Non-finite and non-positive disparities produce NaN depth.
     """
+    if not np.isfinite(min_depth_m) or min_depth_m < 0 or np.isnan(max_depth_m) or max_depth_m <= min_depth_m:
+        raise ValueError("depth limits must satisfy 0 <= finite min < max")
     disparity = np.asarray(disparity_px, dtype=np.float64)
     depth = np.full(disparity.shape, np.nan, dtype=np.float64)
     valid = np.isfinite(disparity) & (disparity > 0.0)
     depth[valid] = calibration.fx_px * calibration.baseline_m / disparity[valid]
+    depth[(depth < min_depth_m) | (depth > max_depth_m)] = np.nan
     return depth
 
 
@@ -60,4 +64,3 @@ def valid_points(organized_points: NDArray[np.floating]) -> NDArray[np.float64]:
         raise ValueError("organized_points must have shape (H, W, 3)")
     flat = points.reshape(-1, 3)
     return flat[np.isfinite(flat).all(axis=1)]
-
