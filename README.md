@@ -310,3 +310,122 @@ diagnostic and isolated controller benchmark with:
 This is a deterministic control-development simulator. Its motor and slip
 models are deliberately simple, and wheel odometry cannot detect unobserved
 slip without an independent pose sensor.
+
+## Timestamped pose estimation
+
+`PoseEstimator` adds a small planar EKF-style layer without changing the
+controller API. Its state is `[x_right, y_forward, heading, gyro_yaw_bias]`.
+Timestamped wheel velocities propagate position and covariance. In IMU modes,
+the latest yaw rate is blended with encoder yaw rate for propagation; optional
+heading and external `[x, y, heading]` observations use Joseph-form covariance
+updates and chi-square innovation gates. Gyro bias becomes observable only when
+heading or pose corrections are available.
+
+Measurements must be monotonic per sensor. IMU and correction measurements may
+arrive within a configured delay window and are applied at the current state
+with conservative handling; the estimator deliberately does not claim full
+out-of-sequence history replay. Missing encoder periods grow covariance without
+integrating the first returning sample across the entire gap. Health becomes
+degraded or faulted when reported uncertainty crosses configured limits.
+
+Run the three-mode moderate-slip comparison, severe dropout case, and estimator
+microbenchmark:
+
+```bash
+.venv/bin/python scripts/run_pose_fusion_demo.py \
+  --output-dir outputs/pose_fusion
+.venv/bin/python scripts/benchmark_pose_estimator.py --iterations 10000
+```
+
+The synthetic external correction represents a future localization source; it
+is not evidence that a real camera, GNSS, beacon, or SLAM system will achieve
+the configured covariance or update rate.
+
+## Recorded encoder/IMU datasets and offline tuning
+
+Recorded format version 1 uses an immutable `manifest.json` plus asynchronous
+`raw.csv`. Every CSV row identifies its clock and may contain encoder counts or
+wheel velocity, IMU yaw rate/heading, external reference pose, battery voltage,
+controller command, marker, and notes. Empty fields represent missing samples;
+each sensor group also has an explicit validity flag. Preprocessing writes a
+separate `processed.csv` with normalized timestamps and wheel velocities.
+
+The manifest documents units, clocks, wheel/encoder metadata, vehicle geometry,
+sensor and external frames, calibration version, run type, surface, payload,
+and optional independently measured distance or heading change. See
+`examples/recorded_sensor_dataset/README.md` for the layout and collection
+rules.
+
+The bounded tuner evaluates a 3×2×2×2 candidate set for encoder process noise,
+gyro noise, external-position covariance, and pose-gating threshold on explicit training runs. It
+selects by mean training position RMSE, then evaluates exactly once on disjoint
+held-out runs. It does not silently tune wheel geometry from an evaluation
+trajectory.
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py validate DATASET
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py preprocess DATASET
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py analyze-imu STATIONARY_DATASET
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py calibrate CONTROLLED_RUN
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py replay DATASET --mode encoder_imu_external
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py compare DATASET
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py tune \
+  --train TRAIN_A TRAIN_B --evaluate HELD_OUT --output tuning.json
+PYTHONPATH=src .venv/bin/python scripts/sensor_log_tool.py report DATASET_A DATASET_B \
+  --output-dir outputs/recorded_report
+```
+
+Time-offset estimation is reported only when streams contain enough shared
+dynamic excitation for correlation. Constant stationary or straight signals
+correctly return “not identifiable” instead of inventing an offset.
+
+## Optional native 3D viewer
+
+The versioned `VisualizationSnapshot` is the only boundary between autonomy and
+visualization. Publishing is a non-blocking insertion into a bounded queue; the
+consumer takes the newest snapshot and counts every obsolete frame it drops.
+Open3D is imported only by the renderer, so mapping, planning, control, tests,
+and headless deployments do not require it. Use `ViewerConfig(enabled=False)`
+for a zero-work disabled publisher.
+
+Open3D coordinates are not remapped: red `+X` is vehicle-right, green `+Y` is
+vehicle-forward, and blue `+Z` is up. The foreground event-loop option is
+preferred on macOS; mock or autonomy producers can run independently and only
+publish snapshots.
+
+Open3D currently has no Python 3.14 wheel. Use Python 3.10–3.12:
+
+```bash
+python3.12 -m venv .venv-open3d
+.venv-open3d/bin/pip install -e '.[visualization]'
+PYTHONPATH=src .venv-open3d/bin/python scripts/view_3d.py live-mock \
+  --frames 200 --rate 12
+```
+
+Viewer keys:
+
+- `Space`: pause/resume
+- `R/T/S/V`: perspective/top/side/front view
+- `1/2/3`: stereo/ToF/combined points
+- `F/P/O/C`: frames/paths/occupancy/confidence filtering
+- `M`: fixed-world/vehicle-following camera
+- `+/-`: point size
+- `K/I`: save current cloud/screenshot
+- `N/B/H`: replay next/previous/restart
+
+Other commands:
+
+```bash
+PYTHONPATH=src .venv-open3d/bin/python scripts/view_3d.py smoke-test
+PYTHONPATH=src .venv-open3d/bin/python scripts/view_3d.py static-mock
+PYTHONPATH=src .venv-open3d/bin/python scripts/view_3d.py replay SNAPSHOT_FOLDER --speed 2
+PYTHONPATH=src .venv-open3d/bin/python scripts/view_3d.py recorded-pair \
+  --left LEFT.png --right RIGHT.png --calibration calibration.json
+PYTHONPATH=src .venv/bin/python scripts/view_3d.py disabled --frames 100
+PYTHONPATH=src .venv/bin/python scripts/generate_3d_mock_sequence.py
+PYTHONPATH=src .venv/bin/python scripts/benchmark_3d_viewer.py
+```
+
+Saved `.npz` snapshots retain point clouds, paths, poses, rigid transforms,
+warnings, and revision metadata for deterministic replay. The headless sequence
+command also creates top/side projections for environments without a display.

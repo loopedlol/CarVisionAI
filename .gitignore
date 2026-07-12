@@ -1,7 +1,7 @@
 .venv/
+.venv-open3d/
 __pycache__/
 .pytest_cache/
 *.py[cod]
 *.egg-info/
 outputs/
-

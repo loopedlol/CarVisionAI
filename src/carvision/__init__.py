@@ -9,6 +9,9 @@ from .stereo import StereoCalibration, backproject_depth, disparity_to_depth
 from .trajectory import GeneratedTrajectory, TrajectoryAction, TrajectoryConfig, generate_trajectory
 from .control import (ControllerConfig, Pose2D, TrajectoryCommand, TrajectoryFollower,
                       VehicleConfig, body_to_wheels, wheels_to_body)
+from .pose_estimation import EstimatorConfig, EstimatorMode, PoseEstimator
+from .recorded_logs import DatasetManifest, replay_dataset, validate_dataset
+from .visualization3d import VisualizationSnapshot, ViewerConfig, ViewerService
 
 __all__ = [
     "OccupancyGrid",
@@ -33,6 +36,15 @@ __all__ = [
     "VehicleConfig",
     "body_to_wheels",
     "wheels_to_body",
+    "EstimatorConfig",
+    "EstimatorMode",
+    "PoseEstimator",
+    "DatasetManifest",
+    "replay_dataset",
+    "validate_dataset",
+    "VisualizationSnapshot",
+    "ViewerConfig",
+    "ViewerService",
     "backproject_depth",
     "camera_to_vehicle",
     "disparity_to_depth",
