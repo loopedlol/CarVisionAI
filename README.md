@@ -1,9 +1,45 @@
-# CarVisionAI perception prototype
+# CarVisionAI
 
-This repository contains a small, sensor-independent perception pipeline that
-can be exercised without hardware. It intentionally stops at a local 2D
-occupancy grid; localization, tracking, planning, and vehicle control are out of
-scope.
+A modular autonomy stack for a small differential-drive vehicle, built to explore the path from **perception to local navigation and control**. The project now spans stereo/ToF-style perception, occupancy mapping, route planning, event-driven replanning, trajectory generation, closed-loop control, pose estimation, offline sensor analysis, and optional 3D visualization.
+
+The architecture deliberately keeps sensor-specific processing separate from mapping and downstream autonomy, so most of the stack can be exercised with synthetic or recorded data before hardware is connected.
+
+**Stack:** Python · NumPy · OpenCV · pytest · optional Open3D
+
+> **Project status:** this is a development and simulation toolkit, not a production autonomous-driving or safety system. Several components have recorded-data paths, but synthetic tests and simplified models are still used throughout the stack.
+
+## System overview
+
+```text
+Stereo / ToF / recorded sensor data
+              ↓
+     Metric point generation
+              ↓
+      Ternary occupancy map
+              ↓
+ Temporal map-state filtering
+              ↓
+ Multi-candidate local planning
+              ↓
+    Trajectory generation
+              ↓
+ Closed-loop differential-drive control
+              ↓
+ Pose estimation + offline tuning
+              ↓
+    Optional 3D visualization
+```
+
+### Key capabilities
+
+- stereo calibration, rectification, disparity filtering, and depth projection;
+- sensor-independent local occupancy mapping with explicit coordinate transforms;
+- A* local planning with clearance, unknown-space, and heading-change costs;
+- temporal map-change detection and selective replanning rather than unconditional full replans;
+- conservative path-to-trajectory generation with collision checks and speed limits;
+- simulated pure-pursuit control, watchdog/fault handling, and differential-drive commands;
+- encoder/IMU pose estimation plus recorded-data replay, calibration, and bounded tuning;
+- optional Open3D snapshots and replay without making visualization a runtime dependency.
 
 ## Coordinate frames and units
 
