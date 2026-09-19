@@ -2,6 +2,7 @@
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/portfolio/hero-dark.svg">
   <img src="docs/assets/portfolio/hero-light.svg" alt="CarVisionAI — from depth measurements to local motion." width="1200">
 </picture>
+
 [Colin's portfolio](https://github.com/loopedlol) · [System](#system) · [See it run](#demo) · [Quick start](#start) · [Technical guide](docs/TECHNICAL_GUIDE.md)
 
 An autonomy development toolkit for a small differential-drive robot: **perception → mapping → planning → simulated control**. The modules also cover timestamped pose estimation, recorded sensor analysis, and optional 3D visualization.
